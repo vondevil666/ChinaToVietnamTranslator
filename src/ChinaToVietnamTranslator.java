@@ -14,7 +14,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 public class ChinaToVietnamTranslator {
     public static final String loadFinishedFlagId = "WidgetFloaterPanels";
     public static final String loadFinishedFlagAttr = "len";
-    private static String inputTextPath = "E://JJavaWorkspace//ChinaToVietnamTranslator//inputText.txt";
+    private static String inputTextPath = "inputText.txt";
     public String[] inputTextSentenceArray;
 
     public static void main(String args[]) {
@@ -31,27 +31,59 @@ public class ChinaToVietnamTranslator {
         StringBuilder sbInputText = readFileReturnStringBuilder(inputTextFile);
         inputTextSentenceArray = seperateInputText(sbInputText);
         StringBuilder Wait_to_TranslateHTML = buildWait_to_TranslateHTML();
+        WebDriver driver=prepareWebDriver(Wait_to_TranslateHTML);
+        waitHTMLToFinishLoad(driver);
 
-        System.setProperty("webdriver.chrome.driver", "E://JJavaWorkspace//chromedriver.exe");
-        WebDriver driver = new ChromeDriver();
+//        System.setProperty("webdriver.chrome.driver", "E://JJavaWorkspace//chromedriver.exe");
+//        WebDriver driver = new ChromeDriver();
 //		driver.get("C:/Users/gbw/Desktop/chichichi.html");
 
         //
-        StringBuilder sb = new StringBuilder();
-        try {
-            File file = new File("C:/Users/gbw/Desktop/chichichi.html");
-            FileReader fr = new FileReader(file);
-            BufferedReader br = new BufferedReader(fr);
-            String tmp = "";
-            while ((tmp = br.readLine()) != null) {
-                sb.append(tmp).append('\n');
-            }
-            br.close();
-            fr.close();
-        } catch (Exception e) {
-        }
+//        StringBuilder sb = new StringBuilder();
+//        try {
+//            File file = new File("C:/Users/gbw/Desktop/chichichi.html");
+//            FileReader fr = new FileReader(file);
+//            BufferedReader br = new BufferedReader(fr);
+//            String tmp = "";
+//            while ((tmp = br.readLine()) != null) {
+//                sb.append(tmp).append('\n');
+//            }
+//            br.close();
+//            fr.close();
+//        } catch (Exception e) {
+//        }
 
         //
+//        File file = new File("TEMP_FILE_AUTO_DELETE_IGNORE_THIS.html");
+//        try {
+//            BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+//            bw.write(sb.toString());
+//            bw.close();
+//        } catch (Exception e) {
+//        }
+//        driver.get(file.getAbsolutePath());
+//        file.delete();
+
+//        MyExpectedCondition myExpCon = new MyExpectedCondition(driver);
+//        new WebDriverWait(driver, 10).until(myExpCon);
+
+        WebElement element = getElementContentToCheckTranslated(driver);
+        System.out.println(element.getText());
+    }
+
+    private void waitHTMLToFinishLoad(WebDriver driver) {
+        MyExpectedCondition myExpCon = new MyExpectedCondition(driver);
+        new WebDriverWait(driver, 10).until(myExpCon);
+    }
+
+    /**
+     * 将待翻译html源码做成临时文件，让WebDriver读取该文件并删除该文件
+     * @param sb 待翻译文本做成的带翻译html源码
+     * @return driver
+     */
+    private WebDriver prepareWebDriver(StringBuilder sb){
+        System.setProperty("webdriver.chrome.driver", "E://JJavaWorkspace//chromedriver.exe");
+        WebDriver driver = new ChromeDriver();
         File file = new File("TEMP_FILE_AUTO_DELETE_IGNORE_THIS.html");
         try {
             BufferedWriter bw = new BufferedWriter(new FileWriter(file));
@@ -61,12 +93,7 @@ public class ChinaToVietnamTranslator {
         }
         driver.get(file.getAbsolutePath());
         file.delete();
-
-        MyExpectedCondition myExpCon = new MyExpectedCondition(driver);
-        new WebDriverWait(driver, 10).until(myExpCon);
-
-        WebElement element = getElementContentToCheckTranslated(driver);
-        System.out.println(element.getText());
+        return driver;
     }
 
     private StringBuilder buildWait_to_TranslateHTML() {
