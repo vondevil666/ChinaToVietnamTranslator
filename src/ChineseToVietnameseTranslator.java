@@ -1,8 +1,4 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -12,6 +8,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -20,38 +17,42 @@ import static javax.swing.text.html.CSS.getAttribute;
 public class ChineseToVietnameseTranslator {
     private static String inputTextPath = "inputText.txt";
     private ArrayList<String[]> sentenceArrayPair;
-    private final String TARGETELEMENTCLASS="ctvParagraph";
+    public final static String TARGETELEMENTCLASS="ctvParagraph";
     public final static String sourceLanguage = "zh-chs";
     public final static String targetLanguage = "en";
 
     public static void main(String args[]) {
         ChineseToVietnameseTranslator main = new ChineseToVietnameseTranslator();
-        main.startProcess(inputTextPath);
+        main.startProcessFromText(main.readFileToText(inputTextPath));
     }
 
-    public static void translate(String inputTextPath) {
+    public static ArrayList<String[]> translate(String inputString) {
         ChineseToVietnameseTranslator main = new ChineseToVietnameseTranslator();
-        main.startProcess(inputTextPath);
+        if(inputString.endsWith(".txt")){
+            inputString = main.readFileToText(inputString);
+        }
+        return main.startProcessFromText(inputString);
     }
 
-    private void startProcess(String inputTextPath) {
-        File inputTextFile = new File(inputTextPath);
-        if (!inputTextFile.exists()) {
-            System.out.println("Input Text File Not Found.Check The Path.");
-            return;
-        }
-        StringBuilder sbInputText = readFileReturnStringBuilder(inputTextFile);
-        sentenceArrayPair = seperateInputTextIntoList(sbInputText);
+    private ArrayList<String[]> startProcessFromText(String inputText){
+        sentenceArrayPair = SentenceSeperator.seperateInputTextIntoList(inputText);
         StringBuilder Wait_to_TranslateHTML = buildWait_to_TranslateHTML();
         System.setProperty("webdriver.chrome.driver", "chromedriver.exe");
         WebDriver driver=prepareWebDriver(Wait_to_TranslateHTML);
         waitHTMLToFinishLoad(driver);
-        getTranslatedElementContent(driver);                 //and add them to 'sentenceArrayPair'.
-//        for (String[] array : sentenceArrayPair) {
-//            System.out.println(array[0]+" &&& "+array[1]+'\n');
-//        }
+        getTranslatedElementContent(driver);         //and add them to 'sentenceArrayPair'.
         writeArrayPairIntoLocalFile(sentenceArrayPair);
+        driver.quit();
+        return sentenceArrayPair;
+    }
 
+    private String readFileToText(String inputTextPath) {
+        File inputTextFile = new File(inputTextPath).getAbsoluteFile();
+        if(!inputTextFile.exists()){
+            System.out.println("Error:Input Text File Not Found.Check The Path.");
+            System.exit(1);
+        }
+        return(readFileContent(inputTextFile));
     }
 
     private void writeArrayPairIntoLocalFile(ArrayList<String[]> arrayList) {
@@ -65,7 +66,7 @@ public class ChineseToVietnameseTranslator {
 
     private void waitHTMLToFinishLoad(WebDriver driver) {
         MyExpectedCondition myExpCon = new MyExpectedCondition(driver);
-        new WebDriverWait(driver, 20).until(myExpCon);
+        new WebDriverWait(driver, 10).until(myExpCon);
     }
 
     /**
@@ -77,7 +78,7 @@ public class ChineseToVietnameseTranslator {
         WebDriver driver = new ChromeDriver();
         File file = new File("TEMP_FILE_AUTO_DELETE_IGNORE_THIS.html");
         writeIntoLocalFile(file, sb.toString());
-        driver.get(file.getAbsolutePath());
+        driver.get("file://"+file.getAbsolutePath());
         file.deleteOnExit();
         return driver;
     }
@@ -110,7 +111,7 @@ public class ChineseToVietnameseTranslator {
         return sb;
     }
 
-    private StringBuilder readFileReturnStringBuilder(File file) {
+    private String readFileContent(File file) {
         StringBuilder sb = new StringBuilder();
         try {
             BufferedReader br = new BufferedReader(new FileReader(file));
@@ -122,22 +123,10 @@ public class ChineseToVietnameseTranslator {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return sb;
+        return sb.toString();
     }
 
-    private ArrayList<String[]> seperateInputTextIntoList(StringBuilder sb) {
-        ArrayList<String[]> arrayList=new ArrayList<String[]>();
-        StringBuilder singleSentence=new  StringBuilder();
-        for (char c : sb.toString().toCharArray()) {
-            singleSentence.append(c);
-            if(c=='。' || c=='！' || c=='？'){
-                String[] tmpStringArray = {singleSentence.toString(), ""};
-                arrayList.add(tmpStringArray);
-                singleSentence=new StringBuilder();
-            }
-        }
-        return arrayList;
-    }
+
 
     private void getTranslatedElementContent(WebDriver driver) {
         try {
@@ -168,7 +157,8 @@ class MyExpectedCondition implements ExpectedCondition<Boolean> {
 
     private boolean ifElementFontAttributeLangExist() {
         try {
-            return driver.findElements(By.className("ctvParagraph")).get(0).getAttribute("lang").equals(ChineseToVietnameseTranslator.targetLanguage);
+            return driver.findElements(By.className(ChineseToVietnameseTranslator.TARGETELEMENTCLASS))
+                    .get(0).getAttribute("lang").equals(ChineseToVietnameseTranslator.targetLanguage);
         } catch (Exception e) {
             System.out.println("Can Not Find Attribute of Elements with Target Language");
 //            e.printStackTrace();
