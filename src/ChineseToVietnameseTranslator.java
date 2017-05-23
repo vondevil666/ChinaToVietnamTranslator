@@ -15,11 +15,11 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import static javax.swing.text.html.CSS.getAttribute;
 
 public class ChineseToVietnameseTranslator {
-    private static String inputTextPath = "inputText.txt";
-    private ArrayList<String[]> sentenceArrayPair;
     public final static String TARGETELEMENTCLASS="ctvParagraph";
     public final static String sourceLanguage = "zh-chs";
     public final static String targetLanguage = "en";
+    private static String inputTextPath = "inputText.txt";
+    private ArrayList<String[]> sentenceArrayPair;
 
     public static void main(String args[]) {
         ChineseToVietnameseTranslator main = new ChineseToVietnameseTranslator();
@@ -41,7 +41,7 @@ public class ChineseToVietnameseTranslator {
         WebDriver driver=prepareWebDriver(Wait_to_TranslateHTML);
         waitHTMLToFinishLoad(driver);
         getTranslatedElementContent(driver);         //and add them to 'sentenceArrayPair'.
-        writeArrayPairIntoLocalFile(sentenceArrayPair);
+//        writeArrayPairIntoLocalFile(sentenceArrayPair);
         driver.quit();
         return sentenceArrayPair;
     }
