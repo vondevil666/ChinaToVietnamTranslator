@@ -16,10 +16,11 @@ import static javax.swing.text.html.CSS.getAttribute;
 
 public class ChineseToVietnameseTranslator {
     public final static String TARGETELEMENTCLASS="ctvParagraph";
-    public final static String sourceLanguage = "zh-chs";
-    public final static String targetLanguage = "en";
+    public static String sourceLanguage = "";
+    public static String targetLanguage = "en";
     private static String inputTextPath = "inputText.txt";
     private ArrayList<String[]> sentenceArrayPair;
+    private File tempHTMLFile;
 
     public static void main(String args[]) {
         ChineseToVietnameseTranslator main = new ChineseToVietnameseTranslator();
@@ -35,15 +36,21 @@ public class ChineseToVietnameseTranslator {
     }
 
     private ArrayList<String[]> startProcessFromText(String inputText){
+        GetTranslatedStringFromPhantomjs.setTargetLanguage(targetLanguage);
         sentenceArrayPair = SentenceSeperator.seperateInputTextIntoList(inputText);
-        StringBuilder Wait_to_TranslateHTML = buildWait_to_TranslateHTML();
-        System.setProperty("webdriver.chrome.driver", "chromedriver.exe");
-        WebDriver driver=prepareWebDriver(Wait_to_TranslateHTML);
-        waitHTMLToFinishLoad(driver);
-        getTranslatedElementContent(driver);         //and add them to 'sentenceArrayPair'.
-//        writeArrayPairIntoLocalFile(sentenceArrayPair);
-        driver.quit();
+        buildWait_to_TranslateHTML();
+        getTranslatedContent();
+        writeArrayPairIntoLocalFile(sentenceArrayPair);
+        tempHTMLFile.deleteOnExit();
         return sentenceArrayPair;
+    }
+
+    public static void setSourceLanguage(String sourceLang) {
+        sourceLanguage=sourceLang;
+    }
+
+    public static void setTargetLanguage(String targetLang) {
+        targetLanguage=targetLang;
     }
 
     private String readFileToText(String inputTextPath) {
@@ -64,25 +71,6 @@ public class ChineseToVietnameseTranslator {
         writeIntoLocalFile(file,sb.toString());
     }
 
-    private void waitHTMLToFinishLoad(WebDriver driver) {
-        MyExpectedCondition myExpCon = new MyExpectedCondition(driver);
-        new WebDriverWait(driver, 10).until(myExpCon);
-    }
-
-    /**
-     * 将待翻译html源码做成临时文件，让WebDriver读取该文件最后删除该文件
-     * @param sb 待翻译文本做成的带翻译html源码
-     * @return driver
-     */
-    private WebDriver prepareWebDriver(StringBuilder sb){
-        WebDriver driver = new ChromeDriver();
-        File file = new File("TEMP_FILE_AUTO_DELETE_IGNORE_THIS.html");
-        writeIntoLocalFile(file, sb.toString());
-        driver.get("file://"+file.getAbsolutePath());
-        file.deleteOnExit();
-        return driver;
-    }
-
     private void writeIntoLocalFile(File file,String string) {
         try {
             BufferedWriter bw = new BufferedWriter(new FileWriter(file));
@@ -93,7 +81,7 @@ public class ChineseToVietnameseTranslator {
         }
     }
 
-    private StringBuilder buildWait_to_TranslateHTML() {
+    private void buildWait_to_TranslateHTML() {
         StringBuilder sb=new StringBuilder();
         sb.append("<html><head><meta charset=UTF-8>");
         sb.append("<script type='text/javascript'>setTimeout(function(){{var s=document.createElement('script');s.type='text/javascript';s.charset='UTF-8';");
@@ -108,7 +96,8 @@ public class ChineseToVietnameseTranslator {
             sb.append("<p class="+TARGETELEMENTCLASS+">").append(s[0]+"</p>");
         }
         sb.append("</body></html>");
-        return sb;
+        tempHTMLFile = new File("TEMP_FILE_AUTO_DELETE_IGNORE_THIS.html");
+        writeIntoLocalFile(tempHTMLFile, sb.toString());
     }
 
     private String readFileContent(File file) {
@@ -128,41 +117,24 @@ public class ChineseToVietnameseTranslator {
 
 
 
-    private void getTranslatedElementContent(WebDriver driver) {
+    private void getTranslatedContent() {
         try {
-            List<WebElement> elements = driver.findElements(By.className(TARGETELEMENTCLASS));
-            if(elements.size()!=sentenceArrayPair.size()) System.out.println("抓取数据个数与输入句子个数不同");
+//            List<WebElement> elements = driver.findElements(By.className(TARGETELEMENTCLASS));
+            ArrayList<String> translatedStringArray=GetTranslatedStringFromPhantomjs.translate();
+            int translatedStringArraySize=translatedStringArray.size();
+            if(translatedStringArraySize!=sentenceArrayPair.size()) {
+                System.out.println("抓取数据个数与输入句子个数不同");
+                for(String array: translatedStringArray){
+                    System.out.println(array);
+                }
+            }
             else{
-                for (int i=0;i<elements.size();i++) {
-                    sentenceArrayPair.get(i)[1] = elements.get(i).getText();
+                for (int i=0;i<translatedStringArraySize;i++) {
+                    sentenceArrayPair.get(i)[1] = translatedStringArray.get(i);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-}
-
-class MyExpectedCondition implements ExpectedCondition<Boolean> {
-    private WebDriver driver;
-
-    MyExpectedCondition(WebDriver driver) {
-        this.driver = driver;
-    }
-
-    @Override
-    public Boolean apply(WebDriver d) {
-        return ifElementFontAttributeLangExist();
-    }
-
-    private boolean ifElementFontAttributeLangExist() {
-        try {
-            return driver.findElements(By.className(ChineseToVietnameseTranslator.TARGETELEMENTCLASS))
-                    .get(0).getAttribute("lang").equals(ChineseToVietnameseTranslator.targetLanguage);
-        } catch (Exception e) {
-            System.out.println("Can Not Find Attribute of Elements with Target Language");
-//            e.printStackTrace();
-        }
-        return false;
     }
 }
