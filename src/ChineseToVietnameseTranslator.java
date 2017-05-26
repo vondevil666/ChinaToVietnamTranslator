@@ -1,28 +1,29 @@
 import java.io.*;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.io.output.FileWriterWithEncoding;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.htmlunit.HtmlUnitDriver;
-import org.openqa.selenium.support.ui.ExpectedCondition;
-import org.openqa.selenium.support.ui.WebDriverWait;
-
-import static javax.swing.text.html.CSS.getAttribute;
-
+/**
+ *工程主类，接受一段文本或一个txt文件路径，返回原文和译文的句对列表ArrayList<String[]>。
+ * 该类有3个公开接口：1.setSourceLanguage()设置源语言（可选）；2.setTargetLanguage()设置目标语言
+ *                   3.translate()，执行翻译流程。
+ *
+ * 该类工作流如下：
+ * 1.如果接收到txt文件路径，则检查文件有效性，并读取文件文本。后续流程与输入一段文本相同，执行步骤2；
+ * 2.用SentenceSeperator类对文本分句；
+ * 3.生成一个临时HTML文件，并将步骤2的分句结果填入HTML；
+ * 4.调用无界面浏览器phantomjs执行上述HTML文件，获得待翻译句子对应的已翻译句子，存入ArrayList<String[]>；
+ * 5.将步骤4的结果写入本地文件（可选），删除步骤3中的临时HTML文件；
+ * 6.返回步骤4的ArrayList<String[]>。
+ *
+ */
 public class ChineseToVietnameseTranslator {
     public final static String TARGETELEMENTCLASS="ctvParagraph";
     public static String sourceLanguage = "";
     public static String targetLanguage = "en";
-    private static String inputTextPath = "inputText.txt";
     private ArrayList<String[]> sentenceArrayPair;
     private File tempHTMLFile;
 
     public static void main(String args[]) {
+        String inputTextPath = "inputText.txt";
         ChineseToVietnameseTranslator main = new ChineseToVietnameseTranslator();
         main.startProcessFromText(main.readFileToText(inputTextPath));
     }
@@ -40,7 +41,7 @@ public class ChineseToVietnameseTranslator {
         sentenceArrayPair = SentenceSeperator.seperateInputTextIntoList(inputText);
         buildWait_to_TranslateHTML();
         getTranslatedContent();
-        writeArrayPairIntoLocalFile(sentenceArrayPair);
+//        writeArrayPairIntoLocalFile(sentenceArrayPair);  //句对写入output.txt文件
         tempHTMLFile.deleteOnExit();
         return sentenceArrayPair;
     }
@@ -119,7 +120,6 @@ public class ChineseToVietnameseTranslator {
 
     private void getTranslatedContent() {
         try {
-//            List<WebElement> elements = driver.findElements(By.className(TARGETELEMENTCLASS));
             ArrayList<String> translatedStringArray=GetTranslatedStringFromPhantomjs.translate();
             int translatedStringArraySize=translatedStringArray.size();
             if(translatedStringArraySize!=sentenceArrayPair.size()) {
